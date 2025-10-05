@@ -52,7 +52,7 @@ app.get('/test-db', async (req, res) => {
 //  Endpoint para guardar pesos
 // =======================
 app.post('/pesos', async(req, res) => {
-    const registros = req.body; // espera un array [{fecha, hora, peso}, ...]
+    const registros = req.body; // espera un array [{fecha, descripcion, peso}, ...]
 
     if (!Array.isArray(registros)) {
         return res.status(400).send("El cuerpo debe ser un array de registros");
@@ -60,9 +60,10 @@ app.post('/pesos', async(req, res) => {
 
     try {
         for (let r of registros) {
+            // Insertando según la estructura de la tabla en Aiven
             await db.query(
-                `INSERT INTO ${process.env.DB_TABLE} (fecha, hora, peso) VALUES (?, ?, ?)`,
-                [r.fecha, r.hora, r.peso]
+                `INSERT INTO ${process.env.DB_TABLE} (fecha, descripcion, peso) VALUES (?, ?, ?)`,
+                [r.fecha, r.descripcion, r.peso]
             );
         }
         res.status(200).send('OK');
