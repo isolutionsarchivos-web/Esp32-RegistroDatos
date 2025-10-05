@@ -30,10 +30,22 @@ async function connectDB() {
 connectDB();
 
 // =======================
-//  Endpoint de prueba
+//  Endpoint principal
 // =======================
 app.get('/', (req, res) => {
     res.send('📡 API ESP32-RegistroDatos activa');
+});
+
+// =======================
+//  Endpoint de prueba DB
+// =======================
+app.get('/test-db', async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT NOW() AS fechaActual;'); // MySQL
+        res.json({ status: 'ok', fechaActual: rows[0].fechaActual });
+    } catch (err) {
+        res.status(500).json({ status: 'error', error: err.message });
+    }
 });
 
 // =======================
@@ -49,7 +61,8 @@ app.post('/pesos', async(req, res) => {
     try {
         for (let r of registros) {
             await db.query(
-                `INSERT INTO ${process.env.DB_TABLE} (fecha, hora, peso) VALUES (?, ?, ?)`, [r.fecha, r.hora, r.peso]
+                `INSERT INTO ${process.env.DB_TABLE} (fecha, hora, peso) VALUES (?, ?, ?)`,
+                [r.fecha, r.hora, r.peso]
             );
         }
         res.status(200).send('OK');
