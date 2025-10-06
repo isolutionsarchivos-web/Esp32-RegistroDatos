@@ -1,3 +1,11 @@
+// ==========================================================
+//  Proyecto: API ESP32-RegistroDatos
+//  Funcionalidad:
+//    - Guarda registros de peso enviados por ESP32 (POST)
+//    - Devuelve registros guardados (GET)
+//    - Prueba de conexión con MySQL
+// ==========================================================
+
 const express = require('express');
 const mysql = require('mysql2/promise');
 require('dotenv').config();
@@ -30,7 +38,7 @@ async function connectDB() {
 connectDB();
 
 // =======================
-//  Endpoint principal
+//  Endpoint raíz
 // =======================
 app.get('/', (req, res) => {
     res.send('📡 API ESP32-RegistroDatos activa');
@@ -41,7 +49,7 @@ app.get('/', (req, res) => {
 // =======================
 app.get('/test-db', async (req, res) => {
     try {
-        const [rows] = await db.query('SELECT NOW() AS fechaActual;'); // MySQL
+        const [rows] = await db.query('SELECT NOW() AS fechaActual;');
         res.json({ status: 'ok', fechaActual: rows[0].fechaActual });
     } catch (err) {
         res.status(500).json({ status: 'error', error: err.message });
@@ -49,10 +57,11 @@ app.get('/test-db', async (req, res) => {
 });
 
 // =======================
-//  Endpoint para guardar pesos
+//  Endpoint para guardar pesos (POST)
+//  Espera un array JSON con objetos [{fecha, descripcion, peso}, ...]
 // =======================
-app.post('/pesos', async(req, res) => {
-    const registros = req.body; // espera un array [{fecha, descripcion, peso}, ...]
+app.post('/pesos', async (req, res) => {
+    const registros = req.body;
 
     if (!Array.isArray(registros)) {
         return res.status(400).send("El cuerpo debe ser un array de registros");
@@ -60,9 +69,8 @@ app.post('/pesos', async(req, res) => {
 
     try {
         for (let r of registros) {
-            // Insertando según la estructura de la tabla en Aiven
             await db.query(
-                `INSERT INTO ${process.env.DB_TABLE} (fecha, descripcion, peso) VALUES (?, ?, ?)`,
+                `INSERT INTO ${process.env.DB_TABLE} (fecha, descripcion, peso) VALUES (?, ?, ?);`,
                 [r.fecha, r.descripcion, r.peso]
             );
         }
@@ -74,7 +82,23 @@ app.post('/pesos', async(req, res) => {
 });
 
 // =======================
-//  Servidor
+//  Endpoint para obtener pesos guardados (GET)
+//  Devuelve los últimos 100 registros de la tabla
+// =======================
+app.get('/pesos', async (req, res) => {
+    try {
+        const [rows] = await db.query(
+            `SELECT id, fecha, descripcion, peso FROM ${process.env.DB_TABLE} ORDER BY fecha DESC LIMIT 100;`
+        );
+        res.json(rows);
+    } catch (err) {
+        console.error("❌ Error al obtener registros:", err);
+        res.status(500).json({ error: 'Error al obtener datos' });
+    }
+});
+
+// =======================
+//  Servidor Express
 // =======================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
